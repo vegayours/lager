@@ -100,19 +100,27 @@ transform_statement({call, Line, {remote, _Line1, {atom, _Line2, lager},
                             {nil, Line}}, DefaultAttrs0)
             end,
             {Traces, Message, Arguments} = case Arguments0 of
-                [Format] ->
-                    {DefaultAttrs, Format, {atom, Line, none}};
+                [Arg0] ->
+                    %% some ambiguity here, Arg0 could be message or attr(traces)
+                    %% expecting string for message and attrs for other
+                    case Arg0 of
+                        {string, _Line, _Value} ->
+                            {DefaultAttrs, Arg0, {atom, Line, none}};
+                        _ -> 
+                            {concat_lists(Arg0, DefaultAttrs),
+                             {string, Line, ""}, {atom, Line, none}}
+                    end;
                 [Arg1, Arg2] ->
                     %% some ambiguity here, figure out if these arguments are
                     %% [Format, Args] or [Attr, Format].
-                    %% The trace attributes will be a list of tuples, so check
-                    %% for that.
+                    %% Primarily we expect Format will be string,
+                    %% Attr could be variable, tuple list, fuction call, etc.
                     case Arg1 of
-                        {cons, _, {tuple, _, _}, _} ->
+                        {string, _Line, _Value} ->
+                            {DefaultAttrs, Arg1, Arg2};
+                        _ -> 
                             {concat_lists(Arg1, DefaultAttrs),
-                                Arg2, {atom, Line, none}};
-                        _ ->
-                            {DefaultAttrs, Arg1, Arg2}
+                             Arg2, {atom, Line, none}}
                     end;
                 [Attrs, Format, Args] ->
                     {concat_lists(Attrs, DefaultAttrs), Format, Args}
@@ -149,7 +157,9 @@ transform_statement(Stmt) ->
 concat_lists({nil, _Line}, B) ->
     B;
 concat_lists({cons, Line, Element, Tail}, B) ->
-    {cons, Line, Element, concat_lists(Tail, B)}.
+    {cons, Line, Element, concat_lists(Tail, B)};
+concat_lists(A = {var, Line, _SomeVar}, B) ->
+    {op, Line, '++', A, B}.
 
 stash_record(Record) ->
     Records = case erlang:get(records) of
