@@ -82,7 +82,7 @@ output(severity,Msg) ->
     atom_to_list(lager_msg:severity(Msg));
 output(meta, Msg) ->
     Metadata = lager_msg:metadata(Msg),
-    FilteredMeta = lists:filter(fun({K, _V}) -> not lists:member(K, [pid, module, fuction, line]) end, Metadata),
+    FilteredMeta = lists:filter(fun({K, _V}) -> not lists:member(K, [pid, module, function, line]) end, Metadata),
     MetadataList = [io_lib:format("~s: ~s", [make_printable(Key), make_printable(Value)]) || {Key, Value} <- FilteredMeta],
     string:join(MetadataList, " | ");
 output(Prop,Msg) when is_atom(Prop) ->
